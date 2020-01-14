@@ -30,10 +30,6 @@
       vars:
         packages:
           - docker-ce
-          - kubeadm
-          - kubectl
-          - kubelet
-      register: kubernetes_installed
 
     - name: Run docker container
       docker_container:
@@ -44,12 +40,16 @@
         ports:
           - "80:8050"
 
+    - name: Find out docker container cid
+      raw: docker ps -aqf "name=image_server"
+      register: cid
+
     - name: Run gunicorn
-      raw: "cd /work/ && gunicorn --bind 0.0.0.0:5000 wsgi:app"
+      raw: "docker exec {{ cid.stdout }} cd /work/ && gunicorn --bind 0.0.0.0:5000 wsgi:app"
       args:
         executable: /bin/bash
 
     - name: Run nginx
-      raw: "nginx"
+      raw: "docker exec {{ cid.stdout }} nginx"
       args:
         executable: /bin/bash
