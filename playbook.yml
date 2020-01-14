@@ -1,0 +1,55 @@
+---
+- hosts: all
+  tasks:
+    - name: Update apt cache and install GnuPG, curl, and other bare essentials
+      apt:
+        name: "{{ packages }}"
+        update_cache: true
+      vars:
+        packages:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - gnupg2
+
+    - name: Add the GPG key for the official Ubuntu Docker repository
+      apt_key:
+      url: https://download.docker.com/linux/ubuntu/gpg
+      state: present
+
+    - name: Add the Docker repository to APT sources
+      apt_repository:
+      repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable
+      state: present
+
+    - name: Install Docker 
+      apt:
+        name: "{{ packages }}"
+        update_cache: true
+      vars:
+        packages:
+          - docker-ce
+          - kubeadm
+          - kubectl
+          - kubelet
+      register: kubernetes_installed
+
+    - name: Run docker container
+      docker_container:
+        name: image_server
+        image: assaia_image_server_1347
+        exposed_ports: 8050
+        state: present
+        ports:
+          - "80:8050"
+
+    - name: Run gunicorn
+      raw: "cd /work/ && gunicorn --bind 0.0.0.0:5000 wsgi:app"
+      args:
+        executable: /bin/bash
+
+    - name: Run nginx
+      raw: "nginx"
+      args:
+        executable: /bin/bash
